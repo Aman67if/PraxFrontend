@@ -1,123 +1,58 @@
+"use client";
 import Link from "next/link";
-import { Sidebar } from "@/components/Sidebar";
+import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import {
-  LayoutDashboard,
   FileText,
-  BarChart3,
-  CreditCard,
-  User,
-  LogOut,
-  Award,
-  TrendingUp,
-  Target,
+  Award, Target,
 } from "lucide-react";
 
 export default function StudentDashboard() {
-  // const navigate = useNavigate();
-
-  const sidebarItems = [
-    {
-      label: "Dashboard",
-      path: "/student",
-      icon: <LayoutDashboard size={20} />,
-    },
-    {
-      label: "Attempt Test",
-      path: "/student/enrolled-tests",
-      icon: <FileText size={20} />,
-    },
-    {
-      label: "My Results",
-      path: "/student/result",
-      icon: <BarChart3 size={20} />,
-    },
-    {
-      label: "Performance Analytics",
-      path: "/student/analytics",
-      icon: <TrendingUp size={20} />,
-    },
-    {
-      label: "Subscription",
-      path: "/student/subscription",
-      icon: <CreditCard size={20} />,
-    },
-    { label: "Profile", path: "/profile", icon: <User size={20} /> },
-    { label: "Logout", path: "/", icon: <LogOut size={20} /> },
-  ];
 
   const stats = [
-    {
-      label: "Tests Attempted",
-      value: "24",
-      icon: <FileText size={24} className="text-blue-600" />,
-    },
-    {
-      label: "Overall Accuracy",
-      value: "78%",
-      icon: <Target size={24} className="text-green-600" />,
-    },
-    {
-      label: "Current Streak",
-      value: "7 days",
-      icon: <Award size={24} className="text-orange-600" />,
-    },
+    { label: "Tests Attempted", value: "24", icon: <FileText size={22} className="text-brand-500" />, bg: "bg-brand-50" },
+    { label: "Overall Accuracy", value: "78%", icon: <Target size={22} className="text-green-600" />, bg: "bg-green-50" },
+    { label: "Current Streak", value: "7 days", icon: <Award size={22} className="text-orange-500" />, bg: "bg-orange-50" },
   ];
 
   const strengths = ["Algebra", "Grammar", "Physics"];
   const weaknesses = ["Geometry", "Vocabulary", "Chemistry"];
 
   const recentTests = [
-    {
-      subject: "Mathematics",
-      chapter: "Linear Equations",
-      score: "85%",
-      date: "Feb 12, 2026",
-    },
-    {
-      subject: "English",
-      chapter: "Comprehension",
-      score: "72%",
-      date: "Feb 10, 2026",
-    },
-    {
-      subject: "Physics",
-      chapter: "Motion",
-      score: "90%",
-      date: "Feb 8, 2026",
-    },
+    { subject: "Mathematics", chapter: "Linear Equations", score: "85%", date: "Feb 12, 2026" },
+    { subject: "English", chapter: "Comprehension", score: "72%", date: "Feb 10, 2026" },
+    { subject: "Physics", chapter: "Motion", score: "90%", date: "Feb 8, 2026" },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar items={sidebarItems} />
+    <>
+      <Navbar title="Dashboard" subtitle="Good morning — ready to practice?" />
 
-      <main className="lg:ml-64 p-4 lg:p-8">
-        {/* Welcome Card */}
-        {/* <Card className="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-            <div>
-              <h1 className="text-3xl mb-2">Welcome back, Rahul! 👋</h1>
-              <p className="text-blue-100">Ready to continue your learning journey?</p>
-            </div>
-            <Link href="/student/test-selection">
-              <Button variant="secondary" size="lg" className="mt-4 md:mt-0">
-                Start Test
-              </Button>
-            </Link>
+        {/* CTA banner */}
+        <div className="mb-7 rounded-2xl bg-brand-500 text-white px-7 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-lg">Ready for today's test?</p>
+            <p className="text-white/70 text-sm mt-0.5">Keep your streak going — pick up where you left off</p>
           </div>
-        </Card> */}
+          <Link href="/student/enrolled-tests">
+            <button className="flex-shrink-0 bg-white text-brand-700 text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-brand-50 transition-colors">
+              Start a Test →
+            </button>
+          </Link>
+        </div>
 
         {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index}>
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
+          {stats.map((stat, i) => (
+            <Card key={i}>
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-gray-50 rounded-lg">{stat.icon}</div>
+                <div className={`w-11 h-11 rounded-xl ${stat.bg} flex items-center justify-center flex-shrink-0`}>
+                  {stat.icon}
+                </div>
                 <div>
-                  <p className="text-gray-600 text-sm">{stat.label}</p>
-                  <p className="text-2xl text-gray-900">{stat.value}</p>
+                  <p className="text-xs text-gray-500 mb-0.5">{stat.label}</p>
+                  <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
                 </div>
               </div>
             </Card>
@@ -125,13 +60,16 @@ export default function StudentDashboard() {
         </div>
 
         {/* Strengths & Weaknesses */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
           <Card>
-            <h2 className="text-xl mb-4 text-gray-900">Your Strengths 💪</h2>
-            <div className="space-y-2">
-              {strengths.map((topic, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
+            <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-brand-500 inline-block" />
+              Your Strengths
+            </h2>
+            <div className="space-y-2.5">
+              {strengths.map((topic, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
                   <span className="text-gray-700">{topic}</span>
                 </div>
               ))}
@@ -139,11 +77,14 @@ export default function StudentDashboard() {
           </Card>
 
           <Card>
-            <h2 className="text-xl mb-4 text-gray-900">Areas to Improve 📚</h2>
-            <div className="space-y-2">
-              {weaknesses.map((topic, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+            <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+              Areas to Improve
+            </h2>
+            <div className="space-y-2.5">
+              {weaknesses.map((topic, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
                   <span className="text-gray-700">{topic}</span>
                 </div>
               ))}
@@ -153,31 +94,33 @@ export default function StudentDashboard() {
 
         {/* Recent Tests */}
         <Card>
-          <h2 className="text-xl mb-4 text-gray-900">Recent Tests</h2>
-          <div className="space-y-4">
-            {recentTests.map((test, index) => (
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-semibold text-gray-900">Recent Tests</h2>
+            <Link href="/student/result">
+              <span className="text-sm text-brand-600 hover:text-brand-700 font-medium">View all →</span>
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {recentTests.map((test, i) => (
               <div
-                key={index}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg"
+                key={i}
+                className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-brand-50 transition-colors"
               >
                 <div>
-                  <h3 className="text-gray-900 mb-1">{test.subject}</h3>
-                  <p className="text-sm text-gray-600">{test.chapter}</p>
+                  <p className="text-sm font-medium text-gray-900">{test.subject}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{test.chapter}</p>
                 </div>
-                <div className="flex items-center gap-4 mt-2 sm:mt-0">
-                  <span className="text-sm text-gray-600">{test.date}</span>
-                  <span className="text-lg text-blue-600">{test.score}</span>
-                  <Link href="/student/results">
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
+                <div className="flex items-center gap-5">
+                  <span className="text-xs text-gray-400">{test.date}</span>
+                  <span className="text-base font-semibold text-brand-600">{test.score}</span>
+                  <Link href="/student/test/result">
+                    <Button variant="ghost" size="sm" className="text-xs">View</Button>
                   </Link>
                 </div>
               </div>
             ))}
           </div>
         </Card>
-      </main>
-    </div>
+    </>
   );
 }

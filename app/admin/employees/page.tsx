@@ -1,16 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Sidebar } from "@/components/Sidebar";
+import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Table } from "@/components/Table";
 import { Modal } from "@/components/Modal";
 import { Input } from "@/components/Input";
+import { API_URL, apiFetch } from "@/lib/api";
+
 import {
-  LayoutDashboard,
-  Users,
-  BarChart3,
-  LogOut,
   Eye,
   EyeOff,
   UserCheck,
@@ -18,9 +16,9 @@ import {
   Pencil,
   Trash2,
   KeyRound,
+  UserPlus,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface Employee {
   id: number;
   name: string;
@@ -30,7 +28,6 @@ interface Employee {
   is_active: boolean;
   created_at: string;
 }
-
 interface EmployeeForm {
   name: string;
   phone: string;
@@ -38,16 +35,13 @@ interface EmployeeForm {
   password: string;
   confirmPassword: string;
 }
-
 interface EditForm {
   name: string;
   phone: string;
   email: string;
-  // password fields — optional, only submitted if user fills them
   newPassword: string;
   confirmNewPassword: string;
 }
-
 interface EmployeeFormErrors {
   name?: string;
   phone?: string;
@@ -55,7 +49,6 @@ interface EmployeeFormErrors {
   password?: string;
   confirmPassword?: string;
 }
-
 interface EditFormErrors {
   name?: string;
   phone?: string;
@@ -64,7 +57,6 @@ interface EditFormErrors {
   confirmNewPassword?: string;
 }
 
-// ─── Password Input ───────────────────────────────────────────────────────────
 function PasswordInput({
   label,
   placeholder,
@@ -83,7 +75,6 @@ function PasswordInput({
   showStrength?: boolean;
 }) {
   const [show, setShow] = useState(false);
-
   const getStrength = () => {
     if (!value) return null;
     let score = 0;
@@ -108,14 +99,12 @@ function PasswordInput({
       };
     return {
       label: "Strong",
-      color: "bg-green-500",
+      color: "bg-brand-500",
       width: "w-full",
-      textColor: "text-green-600",
+      textColor: "text-brand-600",
     };
   };
-
   const strength = showStrength ? getStrength() : null;
-
   return (
     <div>
       <div className="relative">
@@ -133,20 +122,19 @@ function PasswordInput({
           onClick={() => setShow((p) => !p)}
           className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
           tabIndex={-1}
-          aria-label={show ? "Hide password" : "Show password"}
         >
-          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
       {showStrength && value && strength && (
         <div className="mt-2">
-          <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${strength.color} ${strength.width}`}
             />
           </div>
           <p className={`text-xs mt-1 ${strength.textColor}`}>
-            Password strength: {strength.label}
+            Strength: {strength.label}
           </p>
         </div>
       )}
@@ -155,75 +143,65 @@ function PasswordInput({
   );
 }
 
-// ─── Validation ───────────────────────────────────────────────────────────────
 function validateAddForm(form: EmployeeForm): EmployeeFormErrors {
-  const errors: EmployeeFormErrors = {};
-  if (!form.name.trim()) errors.name = "Full name is required.";
-  const phoneDigits = form.phone.replace(/\D/g, "");
-  if (!form.phone.trim()) errors.phone = "Phone number is required.";
-  else if (phoneDigits.length < 10 || phoneDigits.length > 13)
-    errors.phone = "Enter a valid phone number.";
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!form.email.trim()) errors.email = "Email is required.";
-  else if (!emailRegex.test(form.email))
-    errors.email = "Enter a valid email address.";
-  if (!form.password) errors.password = "Password is required.";
-  else if (form.password.length < 8)
-    errors.password = "Must be at least 8 characters.";
+  const e: EmployeeFormErrors = {};
+  if (!form.name.trim()) e.name = "Full name is required.";
+  const digits = form.phone.replace(/\D/g, "");
+  if (!form.phone.trim()) e.phone = "Phone number is required.";
+  else if (digits.length < 10 || digits.length > 13)
+    e.phone = "Enter a valid phone number.";
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.email.trim()) e.email = "Email is required.";
+  else if (!emailRe.test(form.email)) e.email = "Enter a valid email address.";
+  if (!form.password) e.password = "Password is required.";
+  else if (form.password.length < 8) e.password = "Must be at least 8 characters.";
   else if (!/[A-Z]/.test(form.password))
-    errors.password = "Must contain at least one uppercase letter.";
+    e.password = "Must contain at least one uppercase letter.";
   else if (!/[0-9]/.test(form.password))
-    errors.password = "Must contain at least one number.";
+    e.password = "Must contain at least one number.";
   else if (!/[^A-Za-z0-9]/.test(form.password))
-    errors.password = "Must contain at least one special character.";
-  if (!form.confirmPassword)
-    errors.confirmPassword = "Please confirm the password.";
+    e.password = "Must contain at least one special character.";
+  if (!form.confirmPassword) e.confirmPassword = "Please confirm the password.";
   else if (form.confirmPassword !== form.password)
-    errors.confirmPassword = "Passwords do not match.";
-  return errors;
+    e.confirmPassword = "Passwords do not match.";
+  return e;
 }
 
 function validateEditForm(form: EditForm): EditFormErrors {
-  const errors: EditFormErrors = {};
-  if (!form.name.trim()) errors.name = "Full name is required.";
-  const phoneDigits = form.phone.replace(/\D/g, "");
-  if (!form.phone.trim()) errors.phone = "Phone number is required.";
-  else if (phoneDigits.length < 10 || phoneDigits.length > 13)
-    errors.phone = "Enter a valid phone number.";
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!form.email.trim()) errors.email = "Email is required.";
-  else if (!emailRegex.test(form.email))
-    errors.email = "Enter a valid email address.";
-
-  // Password is optional — only validate if user has started typing
+  const e: EditFormErrors = {};
+  if (!form.name.trim()) e.name = "Full name is required.";
+  const digits = form.phone.replace(/\D/g, "");
+  if (!form.phone.trim()) e.phone = "Phone number is required.";
+  else if (digits.length < 10 || digits.length > 13)
+    e.phone = "Enter a valid phone number.";
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.email.trim()) e.email = "Email is required.";
+  else if (!emailRe.test(form.email)) e.email = "Enter a valid email address.";
   if (form.newPassword) {
     if (form.newPassword.length < 8)
-      errors.newPassword = "Must be at least 8 characters.";
+      e.newPassword = "Must be at least 8 characters.";
     else if (!/[A-Z]/.test(form.newPassword))
-      errors.newPassword = "Must contain at least one uppercase letter.";
+      e.newPassword = "Must contain an uppercase letter.";
     else if (!/[0-9]/.test(form.newPassword))
-      errors.newPassword = "Must contain at least one number.";
+      e.newPassword = "Must contain a number.";
     else if (!/[^A-Za-z0-9]/.test(form.newPassword))
-      errors.newPassword = "Must contain at least one special character.";
-
+      e.newPassword = "Must contain a special character.";
     if (!form.confirmNewPassword)
-      errors.confirmNewPassword = "Please confirm the new password.";
+      e.confirmNewPassword = "Please confirm the new password.";
     else if (form.confirmNewPassword !== form.newPassword)
-      errors.confirmNewPassword = "Passwords do not match.";
+      e.confirmNewPassword = "Passwords do not match.";
   }
-
-  return errors;
+  return e;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const emptyAddForm: EmployeeForm = {
+const emptyAdd: EmployeeForm = {
   name: "",
   phone: "",
   email: "",
   password: "",
   confirmPassword: "",
 };
-const emptyEditForm: EditForm = {
+const emptyEdit: EditForm = {
   name: "",
   phone: "",
   email: "",
@@ -231,7 +209,6 @@ const emptyEditForm: EditForm = {
   confirmNewPassword: "",
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminEmployees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -239,52 +216,34 @@ export default function AdminEmployees() {
   const [fetchError, setFetchError] = useState("");
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
-  // Add modal
   const [showAddForm, setShowAddForm] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addServerError, setAddServerError] = useState("");
-  const [addForm, setAddForm] = useState<EmployeeForm>(emptyAddForm);
+  const [addForm, setAddForm] = useState<EmployeeForm>(emptyAdd);
   const [addErrors, setAddErrors] = useState<EmployeeFormErrors>({});
   const [addTouched, setAddTouched] = useState<Record<string, boolean>>({});
 
-  // Edit modal
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
+  const [editForm, setEditForm] = useState<EditForm>(emptyEdit);
   const [editErrors, setEditErrors] = useState<EditFormErrors>({});
   const [editTouched, setEditTouched] = useState<Record<string, boolean>>({});
   const [editLoading, setEditLoading] = useState(false);
   const [editServerError, setEditServerError] = useState("");
   const [showPasswordSection, setShowPasswordSection] = useState(false);
 
-  // Delete modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
     null,
   );
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const sidebarItems = [
-    { label: "Dashboard", path: "/admin", icon: <LayoutDashboard size={20} /> },
-    { label: "Employees", path: "/admin/employees", icon: <Users size={20} /> },
-    {
-      label: "Question Metrics",
-      path: "/admin/metrics",
-      icon: <BarChart3 size={20} />,
-    },
-    { label: "Logout", path: "/", icon: <LogOut size={20} /> },
-  ];
-
-  // ── Fetch ──
   const fetchEmployees = useCallback(async () => {
     setFetchLoading(true);
     setFetchError("");
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/admin/users?role=EMPLOYEE&limit=100",
-        {
-          credentials: "include",
-        },
+      const res = await apiFetch(`${API_URL}/admin/users?role=EMPLOYEE&limit=100`,
+        { credentials: "include" },
       );
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -301,16 +260,11 @@ export default function AdminEmployees() {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  // ── Toggle active ──
   const handleToggleActive = async (id: number) => {
     setTogglingId(id);
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/users/${id}/toggle`,
-        {
-          method: "PATCH",
-          credentials: "include",
-        },
+      const res = await apiFetch(`${API_URL}/admin/users/${id}/toggle`,
+        { method: "PATCH", credentials: "include" },
       );
       if (!res.ok) throw new Error();
       fetchEmployees();
@@ -321,39 +275,29 @@ export default function AdminEmployees() {
     }
   };
 
-  // ── Add handlers ──
   const handleAddChange = (field: keyof EmployeeForm, value: string) => {
     const updated = { ...addForm, [field]: value };
     setAddForm(updated);
-    if (addTouched[field]) {
-      const newErrors = validateAddForm(updated);
-      setAddErrors((prev) => ({ ...prev, [field]: newErrors[field] }));
-    }
-    if (field === "password" && addTouched["confirmPassword"]) {
-      setAddErrors((prev) => ({
-        ...prev,
+    if (addTouched[field])
+      setAddErrors((p) => ({ ...p, [field]: validateAddForm(updated)[field] }));
+    if (field === "password" && addTouched["confirmPassword"])
+      setAddErrors((p) => ({
+        ...p,
         confirmPassword: validateAddForm(updated).confirmPassword,
       }));
-    }
   };
-
   const handleAddBlur = (field: keyof EmployeeForm) => {
-    setAddTouched((prev) => ({ ...prev, [field]: true }));
-    setAddErrors((prev) => ({
-      ...prev,
-      [field]: validateAddForm(addForm)[field],
-    }));
+    setAddTouched((p) => ({ ...p, [field]: true }));
+    setAddErrors((p) => ({ ...p, [field]: validateAddForm(addForm)[field] }));
   };
-
   const handleAddClose = () => {
     setShowAddForm(false);
-    setAddForm(emptyAddForm);
+    setAddForm(emptyAdd);
     setAddErrors({});
     setAddTouched({});
     setAddServerError("");
   };
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setAddServerError("");
     setAddTouched({
@@ -363,18 +307,17 @@ export default function AdminEmployees() {
       password: true,
       confirmPassword: true,
     });
-    const newErrors = validateAddForm(addForm);
-    setAddErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
-
+    const errs = validateAddForm(addForm);
+    setAddErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setAddLoading(true);
     try {
-      const { confirmPassword, ...payload } = addForm;
-      const res = await fetch("http://localhost:5000/api/admin/employees", {
+      const { confirmPassword, ...remaining_data } = addForm;
+      const res = await apiFetch(`${API_URL}/admin/employees`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(remaining_data),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -384,19 +327,18 @@ export default function AdminEmployees() {
       handleAddClose();
       fetchEmployees();
     } catch {
-      setAddServerError("Unable to connect to server. Please try again.");
+      setAddServerError("Unable to connect to server.");
     } finally {
       setAddLoading(false);
     }
   };
 
-  // ── Edit handlers ──
-  const openEditModal = (employee: Employee) => {
-    setEditingEmployee(employee);
+  const openEditModal = (emp: Employee) => {
+    setEditingEmployee(emp);
     setEditForm({
-      name: employee.name,
-      phone: employee.phone ?? "",
-      email: employee.email ?? "",
+      name: emp.name,
+      phone: emp.phone ?? "",
+      email: emp.email ?? "",
       newPassword: "",
       confirmNewPassword: "",
     });
@@ -406,74 +348,62 @@ export default function AdminEmployees() {
     setShowPasswordSection(false);
     setShowEditForm(true);
   };
-
   const handleEditChange = (field: keyof EditForm, value: string) => {
     const updated = { ...editForm, [field]: value };
     setEditForm(updated);
-    if (editTouched[field]) {
-      setEditErrors((prev) => ({
-        ...prev,
+    if (editTouched[field])
+      setEditErrors((p) => ({
+        ...p,
         [field]: validateEditForm(updated)[field],
       }));
-    }
-    if (field === "newPassword" && editTouched["confirmNewPassword"]) {
-      setEditErrors((prev) => ({
-        ...prev,
+    if (field === "newPassword" && editTouched["confirmNewPassword"])
+      setEditErrors((p) => ({
+        ...p,
         confirmNewPassword: validateEditForm(updated).confirmNewPassword,
       }));
-    }
   };
-
   const handleEditBlur = (field: keyof EditForm) => {
-    setEditTouched((prev) => ({ ...prev, [field]: true }));
-    setEditErrors((prev) => ({
-      ...prev,
+    setEditTouched((p) => ({ ...p, [field]: true }));
+    setEditErrors((p) => ({
+      ...p,
       [field]: validateEditForm(editForm)[field],
     }));
   };
-
   const handleEditClose = () => {
     setShowEditForm(false);
     setEditingEmployee(null);
-    setEditForm(emptyEditForm);
+    setEditForm(emptyEdit);
     setEditErrors({});
     setEditTouched({});
     setEditServerError("");
     setShowPasswordSection(false);
   };
-
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEditServerError("");
-
-    const touchFields: Record<string, boolean> = {
+    const touch: Record<string, boolean> = {
       name: true,
       phone: true,
       email: true,
     };
     if (showPasswordSection) {
-      touchFields.newPassword = true;
-      touchFields.confirmNewPassword = true;
+      touch.newPassword = true;
+      touch.confirmNewPassword = true;
     }
-    setEditTouched(touchFields);
-    const newErrors = validateEditForm(editForm);
-    setEditErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
-
+    setEditTouched(touch);
+    const errs = validateEditForm(editForm);
+    setEditErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setEditLoading(true);
     try {
-      // Build payload — only include password if section is open and filled
       const payload: any = {
         name: editForm.name,
         email: editForm.email,
         phone: editForm.phone,
       };
-      if (showPasswordSection && editForm.newPassword) {
+      if (showPasswordSection && editForm.newPassword)
         payload.password = editForm.newPassword;
-      }
-
-      const res = await fetch(
-        `http://localhost:5000/api/admin/employees/${editingEmployee!.id}`,
+      const res = await apiFetch(`${API_URL}/admin/employees/${editingEmployee!.id}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -489,33 +419,26 @@ export default function AdminEmployees() {
       handleEditClose();
       fetchEmployees();
     } catch {
-      setEditServerError("Unable to connect to server. Please try again.");
+      setEditServerError("Unable to connect to server.");
     } finally {
       setEditLoading(false);
     }
   };
 
-  // ── Delete handlers ──
-  const openDeleteModal = (employee: Employee) => {
-    setDeletingEmployee(employee);
+  const openDeleteModal = (emp: Employee) => {
+    setDeletingEmployee(emp);
     setShowDeleteConfirm(true);
   };
-
   const handleDeleteClose = () => {
     setShowDeleteConfirm(false);
     setDeletingEmployee(null);
   };
-
   const handleDeleteConfirm = async () => {
     if (!deletingEmployee) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/employees/${deletingEmployee.id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        },
+      const res = await apiFetch(`${API_URL}/admin/employees/${deletingEmployee.id}`,
+        { method: "DELETE", credentials: "include" },
       );
       if (!res.ok) throw new Error();
       handleDeleteClose();
@@ -527,7 +450,6 @@ export default function AdminEmployees() {
     }
   };
 
-  // ── Table columns ──
   const columns = [
     { key: "name", header: "Name" },
     {
@@ -543,8 +465,8 @@ export default function AdminEmployees() {
     {
       key: "created_at",
       header: "Joined",
-      render: (value: string) =>
-        new Date(value).toLocaleDateString("en-IN", {
+      render: (v: string) =>
+        new Date(v).toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
           year: "numeric",
@@ -553,15 +475,14 @@ export default function AdminEmployees() {
     {
       key: "is_active",
       header: "Status",
-      render: (value: boolean) => (
+      render: (v: boolean) => (
         <span
-          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
-          ${value ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${v ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${value ? "bg-green-500" : "bg-red-500"}`}
+            className={`w-1.5 h-1.5 rounded-full ${v ? "bg-green-500" : "bg-red-500"}`}
           />
-          {value ? "Active" : "Blocked"}
+          {v ? "Active" : "Blocked"}
         </span>
       ),
     },
@@ -569,84 +490,88 @@ export default function AdminEmployees() {
       key: "actions",
       header: "Actions",
       render: (_: any, row: Employee) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => openEditModal(row)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-              border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-all"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100 transition-all"
           >
-            <Pencil size={13} /> Edit
+            <Pencil size={12} /> Edit
           </button>
           <button
             onClick={() => handleToggleActive(row.id)}
             disabled={togglingId === row.id}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-              border transition-all disabled:opacity-50 disabled:cursor-not-allowed
-              ${
-                row.is_active
-                  ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                  : "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
-              }`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${row.is_active ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"}`}
           >
             {togglingId === row.id ? (
               <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : row.is_active ? (
               <>
-                <UserX size={13} /> Block
+                <UserX size={12} /> Block
               </>
             ) : (
               <>
-                <UserCheck size={13} /> Unblock
+                <UserCheck size={12} /> Unblock
               </>
             )}
           </button>
           <button
             onClick={() => openDeleteModal(row)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-              border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-all"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all"
           >
-            <Trash2 size={13} /> Delete
+            <Trash2 size={12} /> Delete
           </button>
         </div>
       ),
     },
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar items={sidebarItems} logo="Praxes Admin" />
+  const pwdRules = (pwd: string) => [
+    { label: "At least 8 characters", ok: pwd.length >= 8 },
+    { label: "One uppercase letter", ok: /[A-Z]/.test(pwd) },
+    { label: "One number", ok: /[0-9]/.test(pwd) },
+    { label: "One special character", ok: /[^A-Za-z0-9]/.test(pwd) },
+  ];
 
-      <main className="lg:ml-64 p-4 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl mb-2 text-gray-900">Manage Employees</h1>
-          <p className="text-gray-600">View and manage all employees</p>
+  return (
+    <>
+      <Navbar title="Employees Management" subtitle="View and manage all employees" />
+
+      <div className="p-5 lg:p-8">
+        <div className="mb-5 flex justify-end">
+          <Button onClick={() => setShowAddForm(true)} size="sm">
+            <UserPlus size={15} /> Add Employee
+          </Button>
         </div>
-        <div className="mb-6">
-          <Button onClick={() => setShowAddForm(true)}>Add New Employee</Button>
-        </div>
+
         <Card>
-          <h2 className="text-xl mb-6 text-gray-900">
-            All Employees {!fetchLoading && `(${totalEmployees})`}
+          <h2 className="font-semibold text-gray-900 mb-5">
+            All Employees{" "}
+            {!fetchLoading && (
+              <span className="text-gray-400 font-normal">
+                ({totalEmployees})
+              </span>
+            )}
           </h2>
+
           {fetchLoading && (
             <div className="py-12 text-center text-gray-400">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              Loading employees...
+              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              <p className="text-sm">Loading employees…</p>
             </div>
           )}
           {fetchError && !fetchLoading && (
-            <div className="py-6 text-center text-red-500">
+            <div className="py-6 text-center text-red-500 text-sm">
               {fetchError}
               <button
                 onClick={fetchEmployees}
-                className="ml-2 text-blue-600 underline text-sm"
+                className="ml-2 text-brand-600 underline"
               >
                 Retry
               </button>
             </div>
           )}
           {!fetchLoading && !fetchError && employees.length === 0 && (
-            <div className="py-12 text-center text-gray-400">
+            <div className="py-12 text-center text-gray-400 text-sm">
               No employees found.
             </div>
           )}
@@ -654,10 +579,10 @@ export default function AdminEmployees() {
             <Table columns={columns} data={employees} />
           )}
         </Card>
-      </main>
+      </div>
 
-      {/* ── Add Employee Modal ── */}
-      <Modal
+      {/* Add modal */}
+      < Modal
         isOpen={showAddForm}
         onClose={handleAddClose}
         title="Add New Employee"
@@ -684,7 +609,7 @@ export default function AdminEmployees() {
           <div>
             <Input
               type="tel"
-              label="Phone Number"
+              label="Phone"
               placeholder="Enter phone number"
               value={addForm.phone}
               onChange={(e) => handleAddChange("phone", e.target.value)}
@@ -732,47 +657,33 @@ export default function AdminEmployees() {
             {!addErrors.confirmPassword &&
               addForm.confirmPassword &&
               addForm.confirmPassword === addForm.password && (
-                <p className="mt-1 text-xs text-green-600">✓ Passwords match</p>
+                <p className="mt-1 text-xs text-brand-600">✓ Passwords match</p>
               )}
           </div>
-          <ul className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-3">
-            <li
-              className={addForm.password.length >= 8 ? "text-green-600" : ""}
-            >
-              {addForm.password.length >= 8 ? "✓" : "○"} At least 8 characters
-            </li>
-            <li
-              className={/[A-Z]/.test(addForm.password) ? "text-green-600" : ""}
-            >
-              {/[A-Z]/.test(addForm.password) ? "✓" : "○"} One uppercase letter
-            </li>
-            <li
-              className={/[0-9]/.test(addForm.password) ? "text-green-600" : ""}
-            >
-              {/[0-9]/.test(addForm.password) ? "✓" : "○"} One number
-            </li>
-            <li
-              className={
-                /[^A-Za-z0-9]/.test(addForm.password) ? "text-green-600" : ""
-              }
-            >
-              {/[^A-Za-z0-9]/.test(addForm.password) ? "✓" : "○"} One special
-              character
-            </li>
+          <ul className="text-xs space-y-1 bg-gray-50 rounded-lg p-3">
+            {pwdRules(addForm.password).map((r, i) => (
+              <li key={i} className={r.ok ? "text-brand-600" : "text-gray-400"}>
+                {r.ok ? "✓" : "○"} {r.label}
+              </li>
+            ))}
           </ul>
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-3 pt-1">
             <Button type="submit" disabled={addLoading}>
-              {addLoading ? "Adding..." : "Add Employee"}
+              {addLoading ? "Adding…" : "Add Employee"}
             </Button>
-            <Button type="button" variant="outline" onClick={handleAddClose}>
+            <Button
+              type="button"
+              variant="outline_danger"
+              onClick={handleAddClose}
+            >
               Cancel
             </Button>
           </div>
         </form>
-      </Modal>
+      </Modal >
 
-      {/* ── Edit Employee Modal ── */}
-      <Modal
+      {/* Edit modal */}
+      < Modal
         isOpen={showEditForm}
         onClose={handleEditClose}
         title="Edit Employee"
@@ -783,12 +694,10 @@ export default function AdminEmployees() {
               {editServerError}
             </div>
           )}
-
-          {/* Basic info */}
           <div>
             <Input
               label="Full Name"
-              placeholder="Enter employee name"
+              placeholder="Enter name"
               value={editForm.name}
               onChange={(e) => handleEditChange("name", e.target.value)}
               onBlur={() => handleEditBlur("name")}
@@ -801,8 +710,8 @@ export default function AdminEmployees() {
           <div>
             <Input
               type="tel"
-              label="Phone Number"
-              placeholder="Enter phone number"
+              label="Phone"
+              placeholder="Enter phone"
               value={editForm.phone}
               onChange={(e) => handleEditChange("phone", e.target.value)}
               onBlur={() => handleEditBlur("phone")}
@@ -816,7 +725,7 @@ export default function AdminEmployees() {
             <Input
               type="email"
               label="Email"
-              placeholder="Enter email address"
+              placeholder="Enter email"
               value={editForm.email}
               onChange={(e) => handleEditChange("email", e.target.value)}
               onBlur={() => handleEditBlur("email")}
@@ -826,44 +735,38 @@ export default function AdminEmployees() {
               <p className="mt-1 text-xs text-red-500">{editErrors.email}</p>
             )}
           </div>
-
-          {/* Password section — collapsible */}
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
             <button
               type="button"
               onClick={() => {
                 setShowPasswordSection((p) => !p);
-                // Clear password fields when collapsing
                 if (showPasswordSection) {
-                  setEditForm((prev) => ({
-                    ...prev,
+                  setEditForm((p) => ({
+                    ...p,
                     newPassword: "",
                     confirmNewPassword: "",
                   }));
-                  setEditErrors((prev) => ({
-                    ...prev,
+                  setEditErrors((p) => ({
+                    ...p,
                     newPassword: undefined,
                     confirmNewPassword: undefined,
                   }));
                 }
               }}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50
-                hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
             >
               <span className="flex items-center gap-2">
-                <KeyRound size={15} className="text-gray-500" />
-                Change Password
+                <KeyRound size={14} className="text-gray-500" /> Change Password{" "}
                 <span className="text-xs font-normal text-gray-400">
                   (optional)
                 </span>
               </span>
               <span
-                className={`transition-transform duration-200 text-gray-400 ${showPasswordSection ? "rotate-180" : ""}`}
+                className={`text-gray-400 text-xs transition-transform ${showPasswordSection ? "rotate-180" : ""}`}
               >
                 ▼
               </span>
             </button>
-
             {showPasswordSection && (
               <div className="p-4 space-y-4 border-t border-gray-200">
                 <PasswordInput
@@ -891,73 +794,48 @@ export default function AdminEmployees() {
                   {!editErrors.confirmNewPassword &&
                     editForm.confirmNewPassword &&
                     editForm.confirmNewPassword === editForm.newPassword && (
-                      <p className="mt-1 text-xs text-green-600">
+                      <p className="mt-1 text-xs text-brand-600">
                         ✓ Passwords match
                       </p>
                     )}
                 </div>
-                <ul className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-3">
-                  <li
-                    className={
-                      editForm.newPassword.length >= 8 ? "text-green-600" : ""
-                    }
-                  >
-                    {editForm.newPassword.length >= 8 ? "✓" : "○"} At least 8
-                    characters
-                  </li>
-                  <li
-                    className={
-                      /[A-Z]/.test(editForm.newPassword) ? "text-green-600" : ""
-                    }
-                  >
-                    {/[A-Z]/.test(editForm.newPassword) ? "✓" : "○"} One
-                    uppercase letter
-                  </li>
-                  <li
-                    className={
-                      /[0-9]/.test(editForm.newPassword) ? "text-green-600" : ""
-                    }
-                  >
-                    {/[0-9]/.test(editForm.newPassword) ? "✓" : "○"} One number
-                  </li>
-                  <li
-                    className={
-                      /[^A-Za-z0-9]/.test(editForm.newPassword)
-                        ? "text-green-600"
-                        : ""
-                    }
-                  >
-                    {/[^A-Za-z0-9]/.test(editForm.newPassword) ? "✓" : "○"} One
-                    special character
-                  </li>
+                <ul className="text-xs space-y-1 bg-gray-50 rounded-lg p-3">
+                  {pwdRules(editForm.newPassword).map((r, i) => (
+                    <li
+                      key={i}
+                      className={r.ok ? "text-brand-600" : "text-gray-400"}
+                    >
+                      {r.ok ? "✓" : "○"} {r.label}
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
           </div>
-
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-3 pt-1">
             <Button type="submit" disabled={editLoading}>
-              {editLoading ? "Saving..." : "Save Changes"}
+              {editLoading ? "Saving…" : "Save Changes"}
             </Button>
             <Button type="button" variant="outline" onClick={handleEditClose}>
               Cancel
             </Button>
           </div>
         </form>
-      </Modal>
+      </Modal >
 
-      {/* ── Delete Confirmation Modal ── */}
-      <Modal
+      {/* Delete modal */}
+      < Modal
         isOpen={showDeleteConfirm}
         onClose={handleDeleteClose}
         title="Delete Employee"
+      // size="sm"
       >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <Trash2 size={20} className="text-red-500 mt-0.5 shrink-0" />
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
+            <Trash2 size={18} className="text-red-500 mt-0.5 shrink-0" />
             <div>
               <p className="text-sm font-medium text-red-800">
-                Are you sure you want to delete{" "}
+                Delete{" "}
                 <span className="font-bold">{deletingEmployee?.name}</span>?
               </p>
               <p className="text-xs text-red-600 mt-1">
@@ -965,21 +843,20 @@ export default function AdminEmployees() {
               </p>
             </div>
           </div>
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-3">
             <button
               onClick={handleDeleteConfirm}
               disabled={deleteLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-                bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {deleteLoading ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
-                  Deleting...
+                  Deleting…
                 </>
               ) : (
                 <>
-                  <Trash2 size={15} /> Delete Employee
+                  <Trash2 size={14} /> Delete
                 </>
               )}
             </button>
@@ -988,7 +865,7 @@ export default function AdminEmployees() {
             </Button>
           </div>
         </div>
-      </Modal>
-    </div>
+      </Modal >
+    </>
   );
 }

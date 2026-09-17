@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeClosed } from "lucide-react";
+import { API_URL, apiFetch } from "@/lib/api";
 
 export default function Login() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function Login() {
       : { email: identifier.trim(), password };
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await apiFetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -60,11 +61,17 @@ export default function Login() {
       {/* Left side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="mb-8">
-            <Link href={"/"} className="text-2xl text-blue-600">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2.5 mb-10 group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-sm">P</span>
+            </div>
+            <span className="text-gray-900 font-semibold text-lg tracking-tight group-hover:text-brand-600 transition-colors">
               Praxes
-            </Link>
-          </div>
+            </span>
+          </Link>
 
           <h1 className="text-3xl mb-2 text-gray-900">Welcome back</h1>
           <p className="text-gray-600 mb-8">
@@ -79,6 +86,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
+              name="username"
               type="text"
               label="Email or Phone"
               placeholder="Enter your email or phone number"
@@ -86,36 +94,47 @@ export default function Login() {
               onChange={(e) => setIdentifier(e.target.value)}
               required
               className="text-gray-900"
+              autoComplete="username"
             />
 
             {/* Password with eye toggle */}
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                label="Password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="text-gray-900 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-[40px] text-gray-400 hover:text-gray-600 transition-colors"
-                tabIndex={-1}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div>
+              <label className="block text-sm mb-1 text-gray-700">Password</label>
+              <div className="relative">
+                <Input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="text-gray-900 pr-10"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeClosed size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-black">
-                <input type="checkbox" className="rounded" />
+              <label className="flex items-center gap-2 text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                />
                 Remember me
               </label>
-              <a href="#" className="text-sm text-blue-600 hover:underline">
+              <a
+                href="#"
+                className="text-brand-600 hover:text-brand-700 font-medium"
+              >
                 Forgot password?
               </a>
             </div>
@@ -163,8 +182,8 @@ export default function Login() {
           <p className="mt-8 text-center text-gray-600">
             Don't have an account?{" "}
             <Link
-              href={"/auth/signup"}
-              className="text-blue-600 hover:underline"
+              href="/auth/signup"
+              className="text-brand-600 hover:text-brand-700 font-medium"
             >
               Sign up
             </Link>

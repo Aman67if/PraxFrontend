@@ -1,142 +1,128 @@
 "use client";
-import { useState } from "react";
-import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/Card";
-import { Button } from "@/components/Button";
 import { Select } from "@/components/Select";
+import { useCurriculum } from "@/hooks/useCurriculum";
 import {
-  LayoutDashboard,
-  FileText,
-  BarChart3,
-  CreditCard,
-  User,
-  LogOut,
-  TrendingUp,
+  BookOpen,
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
 
 export default function TestSelection() {
-  const [selectedClass, setSelectedClass] = useState("10");
-  const [selectedSubject, setSelectedSubject] = useState("math");
+  const router = useRouter();
+  const [selectedSubject, setSelectedSubject] = useState("all");
+  const [topics, setTopics] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const sidebarItems = [
-    {
-      label: "Dashboard",
-      path: "/student",
-      icon: <LayoutDashboard size={20} />,
-    },
-    {
-      label: "Attempt Test",
-      path: "/student/enrolled-tests",
-      icon: <FileText size={20} />,
-    },
-    {
-      label: "My Results",
-      path: "/student/result",
-      icon: <BarChart3 size={20} />,
-    },
-    {
-      label: "Performance Analytics",
-      path: "/student/analytics",
-      icon: <TrendingUp size={20} />,
-    },
-    {
-      label: "Subscription",
-      path: "/student/subscription",
-      icon: <CreditCard size={20} />,
-    },
-    { label: "Profile", path: "/profile", icon: <User size={20} /> },
-    { label: "Logout", path: "/", icon: <LogOut size={20} /> },
-  ];
+  const { getSubjects, getTopics, entries } = useCurriculum();
 
-  const classOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: String(i + 1),
-    label: `Class ${i + 1}`,
-  }));
+  const [classLevel, setClassLevel] = useState(10);
+  const [isMounted, setIsMounted] = useState(false);
 
+  useEffect(() => {
+    setIsMounted(true);
+    const storedClass = localStorage.getItem("praxes_selected_class");
+    if (storedClass) {
+      setClassLevel(parseInt(storedClass, 10));
+    }
+  }, []);
+
+  const subjects = getSubjects(classLevel);
   const subjectOptions = [
-    { value: "math", label: "Mathematics" },
-    { value: "english", label: "English" },
-    { value: "science", label: "Science" },
-    { value: "physics", label: "Physics" },
-    { value: "chemistry", label: "Chemistry" },
-    { value: "biology", label: "Biology" },
+    { value: "all", label: "All Subjects" },
+    ...subjects.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) })),
   ];
 
-  const chapters = [
-    { name: "Linear Equations", questions: 20, difficulty: "Medium" },
-    { name: "Quadratic Equations", questions: 25, difficulty: "Hard" },
-    { name: "Trigonometry", questions: 30, difficulty: "Medium" },
-    { name: "Coordinate Geometry", questions: 20, difficulty: "Easy" },
-    { name: "Statistics", questions: 15, difficulty: "Easy" },
-    { name: "Probability", questions: 18, difficulty: "Medium" },
-  ];
-
-  const handleStartTest = (chapter: string) => {
-    redirect("/student/test");
-  };
+  // Compute unique topics based on selected class and subject
+  useEffect(() => {
+    setLoading(true);
+    const filtered = entries.filter((e) => {
+      if (e.class_level !== classLevel) return false;
+      if (selectedSubject !== "all" && e.subject !== selectedSubject) return false;
+      return true;
+    });
+    const uniqueTopics = [...new Set(filtered.map((e) => e.topic))].sort();
+    setTopics(uniqueTopics);
+    setLoading(false);
+  }, [entries, classLevel, selectedSubject]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar items={sidebarItems} />
+    <>
+      <Navbar title="Attempt Test" subtitle={`Class ${classLevel}`} />
 
-      <main className="lg:ml-64 p-4 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl mb-2 text-gray-900">Attempt Test</h1>
-          <p className="text-gray-600">
-            Select your class, subject, and chapter to begin
-          </p>
-        </div>
+        <div className="p-5 lg:p-8">
+          {/* Subject Filter */}
+          <Card className="mb-6">
+            <div className="max-w-xs">
+              <Select
+                label="Filter by Subject"
+                options={subjectOptions}
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+              />
+            </div>
+          </Card>
 
-        {/* Selection Filters */}
-        <Card className="mb-8">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Select
-              label="Select Class"
-              options={classOptions}
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="text-gray-900"
-            />
-            <Select
-              label="Select Subject"
-              options={subjectOptions}
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="text-gray-900"
-            />
-          </div>
-        </Card>
+          {/* Loading */}
+          {loading && (
+            <div className="py-20 text-center text-gray-400">
+              <Loader2 size={24} className="animate-spin mx-auto mb-3" />
+              <p className="text-sm">Loading topics…</p>
+            </div>
+          )}
 
-        {/* Chapters */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {chapters.map((chapter, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <h3 className="text-xl mb-2 text-gray-900">{chapter.name}</h3>
-              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                <span>{chapter.questions} Questions</span>
-                <span
-                  className={`px-2 py-1 rounded ${
-                    chapter.difficulty === "Easy"
-                      ? "bg-green-100 text-green-700"
-                      : chapter.difficulty === "Medium"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {chapter.difficulty}
-                </span>
+          {/* Empty */}
+          {!loading && topics.length === 0 && (
+            <Card className="py-16 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <BookOpen size={24} className="text-gray-400" />
               </div>
-              <Button
-                onClick={() => handleStartTest(chapter.name)}
-                className="w-full"
-              >
-                Start Test
-              </Button>
+              <p className="text-gray-500 font-medium mb-1">No topics found</p>
+              <p className="text-xs text-gray-400">
+                Select a different class in your profile or try another subject
+              </p>
             </Card>
-          ))}
+          )}
+
+          {/* Topic Cards — clickable */}
+          {!loading && topics.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topics.map((topic) => (
+                <div
+                  key={topic}
+                  onClick={() =>
+                    router.push(`/student/topic/${encodeURIComponent(topic)}`)
+                  }
+                  className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 
+                    hover:border-brand-200 hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
+                        <BookOpen size={18} className="text-brand-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900 text-sm group-hover:text-brand-600 transition-colors">
+                          {topic}
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Tap to view tests
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight
+                      size={18}
+                      className="text-gray-300 group-hover:text-brand-400 transition-colors"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+    </>
   );
 }
