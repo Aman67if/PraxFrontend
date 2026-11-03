@@ -5,7 +5,7 @@
  * Set the value in `.env.local`:
  *   NEXT_PUBLIC_API_URL=http://localhost:5000/api
  */
-export const API_URL = process.env.NEXT_API_URL || "http://localhost:5000/api";
+export const API_URL = process.env.NEXT_API_URL;
 
 /**
  * A wrapper around the native fetch API that automatically adds:
